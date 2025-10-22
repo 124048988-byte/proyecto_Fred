@@ -46,3 +46,28 @@ class User extends Authenticatable
         ];
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/* ESTA PARTE ME DECÍA CHAT QUE ERA LO MINÍMO QUE DEBÍA TENER, PERO NO SÉ CUAL SEA LO CORRECTO, SI LO QUE YA ESTÁ O ESTO
+
+
+public function tickets()
+{
+    return $this->hasMany(Ticket::class, 'user_id');
+}
+
+public function assignedTickets()
+{
+    return $this->hasMany(Ticket::class, 'auxiliar_id');
+}
+ */
