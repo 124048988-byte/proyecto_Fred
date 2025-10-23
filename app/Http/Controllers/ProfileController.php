@@ -2,13 +2,6 @@
 
 namespace App\Http\Controllers;
 
-<<<<<<< HEAD
-use Illuminate\Http\Request;
-
-class ProfileController extends Controller
-{
-    //
-=======
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -64,5 +57,4 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
->>>>>>> main
 }
