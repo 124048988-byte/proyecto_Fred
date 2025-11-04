@@ -18,6 +18,16 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
+            
+            // --- SOLO AÑADIMOS LAS COLUMNAS, NO LAS CLAVES FORÁNEAS AQUÍ ---
+            $table->string('foto_perfil')->nullable(); 
+            $table->string('puesto')->nullable();
+            
+            // Creamos las columnas pero SIN constrained() AÚN.
+            $table->foreignId('departamento_id')->nullable(); 
+            $table->foreignId('rol_id')->nullable(); 
+            // --- FIN NUEVOS CAMPOS ---
+
             $table->timestamps();
         });
 
@@ -42,8 +52,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('departamentos'); // Opcional, pero buena práctica si el orden de caída es relevante
+        Schema::dropIfExists('roles');
     }
 };
