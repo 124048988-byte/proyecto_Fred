@@ -13,14 +13,33 @@ use Illuminate\Support\Facades\Log; // Importación para el manejo de errores
 class TicketController extends Controller
 {
     /**
-     * Muestra la lista de todos los tickets.
+     * Muestra la lista de tickets.
+     * Si el usuario es Jefe (rol_id=1), muestra TODOS los tickets.
+     * Si el usuario NO es Jefe, solo muestra sus tickets creados.
      */
     public function index(): View
     {
-        // Traer todos los tickets con sus relaciones (creador y auxiliar)
-        $tickets = Ticket::with(['creador', 'auxiliar'])->latest()->get();
+        $usuario = Auth::user();
+
+        // 1. Obtener el rol del usuario
+        $isJefe = $usuario->rol_id === 1;
+
+        // 2. Construir la consulta base
+        // Usamos latest() que es un alias de orderBy('created_at', 'desc')
+        $query = Ticket::with(['creador', 'auxiliar'])->latest();
+
+        // 3. Aplicar filtro si NO es Jefe
+        if (!$isJefe) {
+            $query->where('usuario_id', Auth::id());
+        }
+
+        // 4. Ejecutar la consulta y OBTENER UN PAGINATOR usando paginate()
+        $tickets = $query->paginate(10); // Pagina 10 tickets por página
+
+        // 5. Definir el título de la cabecera
+        $headerTitle = $isJefe ? 'Listado de Todos los Tickets' : 'Mis Tickets Creados';
         
-        return view('tickets.index', compact('tickets'));
+        return view('tickets.index', ['tickets' => $tickets, 'headerTitle' => $headerTitle]);
     }
 
     /**
@@ -56,7 +75,7 @@ class TicketController extends Controller
 
     /**
      * Muestra el detalle de un ticket específico.
-     * @param  \App\Models\Ticket  $ticket
+     * @param  \App\Models\Ticket  $ticket
      * @return \Illuminate\View\View
      */
     public function show(Ticket $ticket): View
@@ -97,11 +116,10 @@ class TicketController extends Controller
 
 
     /**
-     * Elimina el ticket especificado del almacenamiento.
-     * Solo permite eliminar si el usuario autenticado es el creador, el ticket está 'pendiente', y no tiene auxiliar asignado.
-     *
-     * @param  \App\Models\Ticket  $ticket
-     * @return \Illuminate\Http\RedirectResponse
+     * ***************************************************************
+     * NOTA: Este método se deja por si la ruta DELETE (Resource) existe.
+     * Se mantiene la lógica de autorización anterior.
+     * ***************************************************************
      */
     public function destroy(Ticket $ticket): RedirectResponse
     {
@@ -111,13 +129,14 @@ class TicketController extends Controller
                              ->with('error', 'No tienes permiso para eliminar este ticket.');
         }
 
-        // 2. Verificar que el estatus sea 'pendiente' Y 3. Que no haya auxiliar asignado
-        if ($ticket->estatus !== 'pendiente' || !is_null($ticket->auxiliar_id)) {
+        // 2. Si el estatus NO es 'pendiente' O si tiene auxiliar asignado, deniega la eliminación.
+        if ($ticket->estatus !== 'pendiente' || !is_null($ticket->auxiliar_id)) { 
             return redirect()->route('tickets.show', $ticket)
                              ->with('error', 'Solo se pueden eliminar tickets pendientes y sin asignar.');
         }
 
         try {
+            // Eliminación física del registro
             $ticket->delete();
             return redirect()->route('tickets.index')
                              ->with('success', 'Ticket eliminado exitosamente.');
@@ -128,8 +147,36 @@ class TicketController extends Controller
     }
 
     // =========================================================================
-    // MÉTODOS DE ACCIÓN PERSONALIZADA
+    // MÉTODOS DE ACCIÓN PERSONALIZADA DE ESTADO
     // =========================================================================
+
+    /**
+     * Cancela el ticket. Solo lo puede hacer el creador si no está cerrado.
+     *
+     * @param  \App\Models\Ticket  $ticket
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function cancel(Ticket $ticket): RedirectResponse
+    {
+        // 1. Autorización: Solo el creador puede cancelar.
+        if (Auth::id() !== $ticket->usuario_id) {
+            return redirect()->route('tickets.show', $ticket)
+                             ->with('error', 'Solo puedes cancelar tus propios tickets.');
+        }
+
+        // 2. Validación de Estado: No se puede cancelar si ya está 'cerrado' o 'cancelado'.
+        if ($ticket->estatus === 'cerrado' || $ticket->estatus === 'cancelado') {
+             return redirect()->route('tickets.show', $ticket)
+                              ->with('error', 'El ticket ya ha sido finalizado y no puede ser cancelado.');
+        }
+        
+        // 3. Actualización de Estado a 'cancelado'
+        $ticket->estatus = 'cancelado';
+        $ticket->save();
+
+        return redirect()->route('tickets.show', $ticket)
+                          ->with('success', 'Ticket #' . $ticket->id . ' cancelado exitosamente. Estatus: Cancelado.');
+    }
 
     /**
      * Asigna el ticket al usuario auxiliar actualmente logueado.
@@ -160,7 +207,7 @@ class TicketController extends Controller
         $ticket->save();
 
         return redirect()->route('tickets.show', $ticket)
-                         ->with('success', 'Ticket #' . $ticket->id . ' tomado exitosamente. Estatus: En progreso.');
+                          ->with('success', 'Ticket #' . $ticket->id . ' tomado exitosamente. Estatus: En progreso.');
     }
 
     /**
@@ -180,19 +227,18 @@ class TicketController extends Controller
                              ->with('error', 'Solo el auxiliar asignado o un Jefe puede marcar este ticket como Terminado.');
         }
         
-        // 2. Validación de Estado: No se puede cerrar si ya está cerrado.
-        if ($ticket->estatus === 'cerrado') {
+        // 2. Validación de Estado: No se puede cerrar si ya está cerrado o cancelado.
+        if ($ticket->estatus === 'cerrado' || $ticket->estatus === 'cancelado') {
              return redirect()->route('tickets.show', $ticket)
-                              ->with('error', 'El ticket ya estaba marcado como Terminado.');
+                              ->with('error', 'El ticket ya estaba marcado como Terminado o fue cancelado.');
         }
 
         // 3. Actualización de Estado
-        // El estatus podría venir del request en un entorno real, pero aquí lo forzamos a 'cerrado'
         $ticket->estatus = 'cerrado';
         $ticket->save();
 
         return redirect()->route('tickets.show', $ticket)
-                         ->with('success', 'Ticket #' . $ticket->id . ' marcado como Terminado (Cerrado) exitosamente.');
+                          ->with('success', 'Ticket #' . $ticket->id . ' marcado como Terminado (Cerrado) exitosamente.');
     }
     
     /**
@@ -216,35 +262,52 @@ class TicketController extends Controller
         $comentario->ticket_id = $ticket->id;
         $comentario->save();
 
-        // 3. Lógica Opcional: Si un auxiliar/jefe comenta un ticket pendiente, lo asigna y lo pone en progreso.
+        // 3. Lógica de Asignación Automática (MEJORADA)
         $usuario = Auth::user();
-        // Asumiendo que rol_id 1 = Jefe, 2 = Auxiliar, 3 = Usuario (Solo soporte tiene rol_id 1 o 2)
-        if ($usuario->rol_id !== 3) { 
-            if ($ticket->estatus === 'pendiente') {
+        $authUserId = Auth::id();
+        
+        // A) El usuario que comenta es AUXILIAR o JEFE (rol_id 1 o 2)
+        $isSupportUser = ($usuario->rol_id === 1 || $usuario->rol_id === 2);
+        
+        // Bandera para saber si se asignó o no el ticket
+        $ticketWasAssigned = false; 
+
+        if ($isSupportUser && $ticket->estatus === 'pendiente') {
+            
+            // Si está pendiente y es soporte, revisamos si tiene auxiliar.
+            if (is_null($ticket->auxiliar_id)) {
+                 // ASIGNACIÓN AUTOMÁTICA
                 $ticket->estatus = 'en progreso';
-                // Asigna el auxiliar si no estaba asignado
-                if (is_null($ticket->auxiliar_id)) {
-                    $ticket->auxiliar_id = $usuario->id;
-                }
+                $ticket->auxiliar_id = $authUserId;
                 $ticket->save();
+                $ticketWasAssigned = true; 
+            } else {
+                // Si ya estaba asignado a otro auxiliar, y solo está pendiente de estatus
+                // Solo cambiamos el estatus a 'en progreso' si el auxiliar asignado es el que comenta.
+                if ($ticket->auxiliar_id === $authUserId) {
+                    $ticket->estatus = 'en progreso';
+                    $ticket->save();
+                }
             }
         }
-
-        // 4. Redireccionar de vuelta a la página del ticket
-        return back()->with('success', 'Comentario añadido exitosamente.');
+        
+        // 4. Redireccionar con el mensaje adecuado (DIFERENCIADO)
+        if ($ticketWasAssigned) {
+            // Mensaje de éxito específico si se tomó el ticket
+            return back()->with('success', 'Comentario añadido. ¡Ticket #' . $ticket->id . ' tomado exitosamente y en progreso!');
+        }
+        
+        // Si el ticket ya estaba asignado, o lo comentó el creador (rol_id 3), o solo se cambió el estado
+        return back()->with('success', 'Comentario añadido exitosamente. No hay cambios en la asignación.');
     }
 
     /**
-     * Muestra solo los tickets creados por el usuario logueado (ruta /mis-tickets).
+     * Este método ya no tiene sentido si 'index' maneja la lógica de filtrado por rol.
+     * Lo redirigiremos a index y mantendremos la ruta para evitar errores 404
      */
-    public function misTickets(): View
+    public function misTickets(): RedirectResponse
     {
-        $tickets = Ticket::where('usuario_id', Auth::id())
-                          ->with(['creador', 'auxiliar'])
-                          ->latest()
-                          ->get();
-
-        // Puedes pasar un título adicional a la vista de índice para diferenciarla
-        return view('tickets.index', ['tickets' => $tickets, 'headerTitle' => 'Mis Tickets Creados']);
+        // Redirige al index, que ahora aplica el filtro automático si no es Jefe.
+        return redirect()->route('tickets.index');
     }
 }

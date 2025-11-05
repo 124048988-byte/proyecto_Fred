@@ -26,38 +26,32 @@
                 </div>
             @endif
 
-            <!-- Tarjeta de Información Principal del Ticket -->
             <div class="bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl">
                 <div class="p-6">
                     <h3 class="text-2xl font-extrabold text-gray-900 dark:text-gray-100 mb-6 border-b border-gray-200 dark:border-gray-700 pb-3">Detalles del Reporte</h3>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-sm">
-                        <!-- CREADOR -->
                         <div class="flex flex-col">
                             <p class="font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Creado por:</p>
                             <p class="text-gray-900 dark:text-gray-100 font-semibold">{{ $ticket->creador->name }}</p>
                         </div>
 
-                        <!-- AUXILIAR ASIGNADO -->
                         <div class="flex flex-col">
                             <p class="font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asignado a:</p>
                             <p class="text-gray-900 dark:text-gray-100">{{ $ticket->auxiliar ? $ticket->auxiliar->name : 'Ningún auxiliar asignado.' }}</p>
                         </div>
                         
-                        <!-- DEPARTAMENTO -->
                         <div class="flex flex-col">
                             <p class="font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Departamento:</p>
                             {{-- **Nota:** Asumo que el modelo Ticket tiene una relación 'departamento' --}}
                             <p class="text-gray-900 dark:text-gray-100">{{ $ticket->departamento ? $ticket->departamento->nombre : 'N/A' }}</p>
                         </div>
 
-                        <!-- FECHA DE CREACIÓN -->
                         <div class="flex flex-col">
                             <p class="font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha de Creación:</p>
                             <p class="text-gray-900 dark:text-gray-100">{{ $ticket->created_at->format('d/m/Y H:i') }}</p>
                         </div>
                         
-                        <!-- ESTATUS -->
                         <div class="flex flex-col col-span-1 md:col-span-2">
                             <p class="font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Estatus:</p>
                             {{-- Aplicamos estilos condicionales basados en el estatus --}}
@@ -73,7 +67,6 @@
                 </div>
             </div>
             
-            <!-- Bloque de Descripción -->
             <div class="bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl">
                 <div class="p-6">
                     <h4 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2">Descripción del Problema</h4>
@@ -83,34 +76,44 @@
                 </div>
             </div>
 
-            <!-- Bloque de Comentarios/Historial -->
             <div class="bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl">
                 <div class="p-6">
                     <h4 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Historial de Comentarios</h4>
 
                     {{-- Usar @forelse para evitar el error de 'foreach' si la colección está vacía --}}
-                    @forelse ($ticket->comentarios as $comentario)
+                    @foreach ($ticket->comentarios as $comentario)
                         {{-- Distingue visualmente tu propio comentario del de otros usuarios --}}
-                        <div class="mb-4 p-4 rounded-xl {{ $comentario->user_id === Auth::id() ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-gray-100 dark:bg-gray-700' }} shadow-md border-l-4 border-indigo-400 dark:border-indigo-600">
+                        <div class="mb-4 p-4 rounded-xl {{ $comentario->user_id === Auth::id() ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-gray-100 dark:bg-gray-700' }}">
+                            
+                            {{-- Encabezado del Comentario (Nombre y Fecha) --}}
                             <div class="flex justify-between items-center mb-2">
                                 <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ $comentario->user->name }} 
+                                    {{-- Usa el operador nullsafe para evitar errores si el usuario fue eliminado --}}
+                                    {{ $comentario->user?->name ?? 'Usuario Eliminado' }} 
                                     @if ($comentario->user_id === Auth::id())
                                         <span class="text-xs font-normal text-indigo-600 dark:text-indigo-400 ml-1">(Tú)</span>
                                     @endif
                                 </p>
-                                {{-- Muestra el tiempo de forma relativa, por ejemplo: "hace 5 minutos" --}}
-                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $comentario->created_at->diffForHumans() }}</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">
+                                    {{ $comentario->created_at->diffForHumans() }}
+                                </span>
                             </div>
-                            <p class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{{ $comentario->contenido }}</p>
+
+                            {{-- CUERPO DEL COMENTARIO: Asegúrate de que esta propiedad coincida con tu columna real --}}
+                            <p class="text-gray-700 dark:text-gray-200 whitespace-pre-line">
+                                {{ $comentario->cuerpo }}
+                            </p>
                         </div>
-                    @empty
-                        <p class="text-gray-600 dark:text-gray-400 text-center py-4">Aún no hay comentarios en este ticket.</p>
-                    @endforelse
+                    @endforeach
+
+                    @if ($ticket->comentarios->isEmpty())
+                        <div class="text-center py-6 text-gray-500 dark:text-gray-400 italic">
+                            Aún no hay comentarios para este ticket.
+                        </div>
+                    @endif
                 </div>
             </div>
 
-            <!-- Bloque de Añadir Comentario -->
             @if ($ticket->estatus !== 'cerrado')
             <div class="bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl">
                 <div class="p-6">
@@ -141,27 +144,30 @@
             </div>
             @endif
 
-            <!-- Bloque de ACCIONES -->
             <div class="bg-white dark:bg-gray-800 shadow-xl sm:rounded-xl">
                 <div class="p-6">
                     <h4 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">Acciones del Ticket</h4>
                     <div class="flex flex-wrap gap-4">
                         
-                        <!-- BOTÓN VOLVER -->
                         <a href="{{ route('tickets.index') }}" class="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md font-semibold text-xs text-gray-700 dark:text-gray-300 uppercase tracking-widest hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                             Volver al Listado
                         </a>
 
-                        {{-- 1. BOTÓN TOMAR TICKET (Solo visible si el estatus es 'pendiente', NO está asignado, el usuario es soporte (rol_id=1 o 2) Y el usuario NO es el creador del ticket) --}}
-                        @if (
-                            $ticket->estatus === 'pendiente' && 
-                            is_null($ticket->auxiliar_id) && 
-                            (Auth::user()->rol_id === 1 || Auth::user()->rol_id === 2) &&
-                            Auth::id() !== $ticket->usuario_id
-                            )
+                        {{-- 1. LÓGICA PARA TOMAR TICKET (CORREGIDA PARA EXCLUIR AL CREADOR) --}}
+                        @php
+                            $canTakeTicket = $ticket->estatus === 'pendiente' && 
+                                             is_null($ticket->auxiliar_id) && 
+                                             (Auth::user()->rol_id === 1 || Auth::user()->rol_id === 2) &&
+                                             // **NUEVA CONDICIÓN:** El usuario autenticado NO es el creador del ticket
+                                             Auth::id() !== $ticket->usuario_id;
+                        @endphp
+
+                        @if ($canTakeTicket)
+                            {{-- BOTÓN VISIBLE para Jefes/Auxiliares (Rol 1 o 2) si el ticket está 'pendiente', no asignado Y NO fue creado por ellos --}}
                             <form method="POST" action="{{ route('tickets.assign', $ticket) }}">
                                 @csrf
+                                @method('PATCH')
                                 <button type="submit" class="inline-flex items-center px-4 py-2 bg-yellow-400 border border-transparent rounded-md font-semibold text-xs text-yellow-900 uppercase tracking-widest hover:bg-yellow-500 focus:bg-yellow-500 active:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-lg">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                     Tomar Ticket (Asignarme)
@@ -183,11 +189,15 @@
                         @endif
 
                         {{-- 3. BOTÓN DE ELIMINACIÓN CONDICIONAL (Solo el creador si está 'pendiente' y NO asignado) --}}
+                        {{-- NOTA: Si esta acción es realmente 'Cancelar' el ticket (cambiar estado a 'cancelado'), es correcto.
+                           Si la intención es ELIMINARlo de la DB, la ruta y el método deben ser DELETE (y tickets.destroy).
+                           Asumiendo que quieres CANCELAR el ticket (cambiar estado), la lógica es correcta. --}}
                         @if (Auth::id() === $ticket->usuario_id && $ticket->estatus === 'pendiente' && is_null($ticket->auxiliar_id))
-                            <form method="POST" action="{{ route('tickets.destroy', $ticket) }}" onsubmit="return confirm('¿Estás seguro de que quieres ELIMINAR el ticket #{{ $ticket->id }}? Esta acción es irreversible. (Usarás un pop-up simple, pero lo ideal es una modal)');">
+                            {{-- Llama al modal de confirmación via JavaScript --}}
+                            <form id="delete-ticket-form" method="POST" action="{{ route('tickets.cancel', $ticket) }}">
                                 @csrf
-                                @method('DELETE')
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 dark:bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 dark:hover:bg-red-600 focus:bg-red-700 dark:focus:bg-red-600 active:bg-red-900 dark:active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150 shadow-lg">
+                                @method('PATCH') {{-- Usamos PATCH para actualizar el estado a 'cancelado' --}}
+                                <button type="button" onclick="openDeleteModal()" class="inline-flex items-center px-4 py-2 bg-red-600 dark:bg-red-700 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 dark:hover:bg-red-600 focus:bg-red-700 dark:focus:bg-red-600 active:bg-red-900 dark:active:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150 shadow-lg">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                     Eliminar Ticket
                                 </button>
@@ -199,4 +209,67 @@
 
         </div>
     </div>
+    
+    {{-- Modal y Script (dejados sin cambios) --}}
+    <div id="delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 dark:bg-opacity-90 z-50 hidden transition-opacity duration-300" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 transition-opacity" aria-hidden="true" onclick="closeDeleteModal()"></div>
+            
+            <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+                 aria-hidden="true" 
+                 role="alert" 
+                 style="transform: translateY(0); transition: transform 0.3s ease-out;">
+                
+                <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-bold text-gray-900 dark:text-gray-100" id="modal-title">
+                                Confirmar Eliminación del Ticket
+                            </h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    ¿Estás **ABSOLUTAMENTE SEGURO** de que deseas eliminar el ticket **#{{ $ticket->id }}**?
+                                </p>
+                                <p class="text-sm text-red-600 dark:text-red-400 font-semibold mt-1">
+                                    Esta acción es irreversible y el historial de este ticket se perderá.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse rounded-b-xl">
+                    <button type="button" onclick="document.getElementById('delete-ticket-form').submit()" 
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 dark:bg-red-700 text-base font-medium text-white hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm transition duration-150">
+                        Sí, Eliminar Permanentemente
+                    </button>
+                    <button type="button" onclick="closeDeleteModal()" 
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-600 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 sm:mt-0 sm:w-auto sm:text-sm transition duration-150">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Script para controlar el modal --}}
+    <script>
+        // Función para abrir el modal
+        function openDeleteModal() {
+            const modal = document.getElementById('delete-modal');
+            modal.classList.remove('hidden');
+        }
+
+        // Función para cerrar el modal
+        function closeDeleteModal() {
+            const modal = document.getElementById('delete-modal');
+            modal.classList.add('hidden');
+        }
+    </script>
 </x-app-layout>

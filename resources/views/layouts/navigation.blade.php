@@ -13,13 +13,15 @@
                         {{ __('Dashboard') }}
                     </x-nav-link>
 
-                    {{-- AGREGADO: Enlace a Tickets --}}
+                    {{-- ENLACE TICKETS --}}
                     <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.index')">
                         {{ __('Tickets') }}
                     </x-nav-link>
                 </div>
             </div>
 
+            {{-- INICIO: Bloque de usuario (Solo para autenticados) --}}
+            @auth
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
@@ -28,11 +30,15 @@
                             {{-- INICIO: Lógica y Display de la Foto (Escritorio) --}}
                             @php
                                 $photoUrl = Auth::user()->foto_perfil 
-                                            ? \Illuminate\Support\Facades\Storage::url(Auth::user()->foto_perfil)
-                                            : 'https://placehold.co/24x24/36454F/white?text=' . substr(Auth::user()->name, 0, 1);
+                                    ? \Illuminate\Support\Facades\Storage::url(Auth::user()->foto_perfil) 
+                                    : 'https://placehold.co/40x40/36454F/white?text=' . substr(Auth::user()->name, 0, 1);
                             @endphp
                             
-                            <img src="{{ $photoUrl }}" alt="{{ Auth::user()->name }}" class="h-6 w-6 rounded-full object-cover mr-2 border border-gray-700">
+                            {{-- *** SOLUCIÓN: Usamos estilo en línea para forzar 28px (equivalente a h-7 w-7) *** --}}
+                            <img src="{{ $photoUrl }}" 
+                                 alt="{{ Auth::user()->name }}" 
+                                 class="h-9 w-9 rounded-full object-cover mr-2 border border-gray-700"
+                                 style="height: 45px; width: 45px;">
                             {{-- FIN: Lógica y Display de la Foto --}}
 
                             <div>{{ Auth::user()->name }}</div>
@@ -62,9 +68,11 @@
                     </x-slot>
                 </x-dropdown>
             </div>
+            @endauth
+            {{-- FIN: Bloque de usuario (Solo para autenticados) --}}
 
             <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-900 focus:text-gray-500 dark:focus:text-gray-400 transition duration-150 ease-in-out">
+                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-900 focus:text-gray-500 dark:focus:focus:text-gray-400 transition duration-150 ease-in-out">
                     <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
                         <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -80,22 +88,28 @@
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
 
-            {{-- AGREGADO: Enlace Tickets para Responsivo --}}
+            {{-- ENLACE TICKETS RESPONSIVO --}}
             <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.index')">
                 {{ __('Tickets') }}
             </x-responsive-nav-link>
         </div>
 
+        {{-- INICIO: Bloque de usuario Responsivo (Solo para autenticados) --}}
+        @auth
         <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
             
             {{-- INICIO: Lógica y Display de la Foto (Responsivo) --}}
             @php
                 $photoUrl = Auth::user()->foto_perfil 
-                            ? \Illuminate\Support\Facades\Storage::url(Auth::user()->foto_perfil)
-                            : 'https://placehold.co/40x40/36454F/white?text=' . substr(Auth::user()->name, 0, 1);
+                    ? \Illuminate\Support\Facades\Storage::url(Auth::user()->foto_perfil) 
+                    : 'https://placehold.co/40x40/36454F/white?text=' . substr(Auth::user()->name, 0, 1);
             @endphp
             <div class="px-4 flex items-center">
-                <img src="{{ $photoUrl }}" alt="{{ Auth::user()->name }}" class="h-10 w-10 rounded-full object-cover mr-3 border border-gray-700">
+                {{-- AJUSTE DE TAMAÑO RESPONSIVO: h-10 w-10 (40px) --}}
+                <img src="{{ $photoUrl }}" 
+                     alt="{{ Auth::user()->name }}" 
+                     class="h-10 w-10 rounded-full object-cover mr-3 border border-gray-700"
+                     style="height: 40px; width: 40px;">
                 <div>
                     <div class="font-medium text-base text-gray-800 dark:text-gray-200">{{ Auth::user()->name }}</div>
                     <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
@@ -112,12 +126,14 @@
                     @csrf
 
                     <x-responsive-nav-link :href="route('logout')"
-                            onclick="event.preventDefault();
-                                        this.closest('form').submit();">
+                                onclick="event.preventDefault();
+                                            this.closest('form').submit();">
                         {{ __('Log Out') }}
                     </x-responsive-nav-link>
                 </form>
             </div>
         </div>
+        @endauth
+        {{-- FIN: Bloque de usuario Responsivo (Solo para autenticados) --}}
     </div>
 </nav>
